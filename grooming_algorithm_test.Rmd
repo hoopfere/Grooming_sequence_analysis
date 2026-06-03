@@ -1,0 +1,176 @@
+---
+title: "grooming_algorthim_test"
+author: "david"
+date: "2025-08-22"
+output: html_document
+---
+
+##The goal of this code is to plot a transition matrix for fly grooming behavior, particularly grooming of the head, abdomen, thorax, and wings. We are going to just denote the number of transitions in each cell of the matrix in order to calculate the transition probability between behaviors (See Kalueff and Tuohimaa 2004 for an example).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Libraries
+```{r}
+library(tidyverse)
+library(psych)
+library(pheatmap)
+```
+
+##creating and adding transition matrices 
+```{r}
+create_a_matrix <- function(x) {
+  df <- read_csv(paste("C:/Users/user/Documents/Carleton College/Hoopfer lab/Summer 25/grooming algorthim/", x, sep = ""))
+  
+  #reading in a csv
+  df <- df %>%
+    select(Behavior, `Behavior type`, Time) #choosing only the relevant columns
+  
+  #separating start and stop 
+  start_behavior <- df %>% 
+    filter(row_number() %% 2 == 1)
+  end_behavior <- df %>% 
+    filter(row_number() %% 2 == 0)
+  
+  #rename the behavior names to 1-5
+  start_behavior <- start_behavior %>%
+    mutate(Behavior = case_when(Behavior == "Rubbing" ~ 1, 
+                                Behavior == "Head" ~ 2, 
+                                Behavior == "Abdomen" ~ 3,
+                                Behavior == "Wing" ~ 4,
+                                Behavior == "Thorax" ~ 5))
+  end_behavior <- end_behavior %>%
+    mutate(Behavior = case_when(Behavior == "Rubbing" ~ 1, 
+                                Behavior == "Head" ~ 2, 
+                                Behavior == "Abdomen" ~ 3,
+                                Behavior == "Wing" ~ 4,
+                                Behavior == "Thorax" ~ 5))
+  
+  #Creating empty matrix
+  transition_matrix <- matrix(
+    0, nrow = 5, ncol = 5,
+    dimnames = list(c("rubbing","head","abdomen","wing","thorax"),
+                    c("rubbing","head","abdomen","wing","thorax")))
+  
+  #Loop to add transitions into the matrix
+  behavior_vector <- start_behavior$Behavior
+  
+  #for i in length of behavior_vector - 1, set row to value of i and set column to value of i + 1. i is the first start behavior, i+1 is the second behavior. Add 1 to the cell that corresponds to the coordinates of row and column in the matrix.
+  for (i in 1:length(behavior_vector) - 1){
+    row <- as.numeric(behavior_vector[i])
+    column <- as.numeric(behavior_vector[i+1])
+    transition_matrix[row, column] <- transition_matrix[row, column] + 1
+  }
+  #output 
+  return(transition_matrix)
+}
+
+EH250416_SocIso_1_Scoring_CH1_DL <- create_a_matrix("EH250416_SocIso_1_Scoring_CH1_DL.csv")
+EH250416_SocIso_1_Ch2_MRC <- create_a_matrix("EH250416_SocIso_1_Ch2_MRC.csv")
+EH250416_SocIso_1_Scoring_CH3_DL <- create_a_matrix("EH250416_SocIso_1_Scoring_CH3_DL.csv")
+EH250416_SocIso_1_Scoring_CH4_DL <- create_a_matrix("EH250416_SocIso_1_Scoring_CH4_DL.csv")
+```
+
+function to create transition probability
+```{r}
+calculate_transition_probabilities <- function(trans_matrix) {
+  # row sums
+  row_totals <- rowSums(trans_matrix)
+  
+  # take each value in the transition matrix by row and divide it by the corresponding row_totals value
+  prob_matrix <- sweep(trans_matrix, 1, row_totals, FUN = "/")
+  
+  # replace NaN (from dividing by 0) with 0
+  prob_matrix[is.na(prob_matrix)] <- 0
+  
+  # check each row sums to ~1 (within rounding)
+  row_sums_check <- rowSums(prob_matrix)
+  if (!all(abs(row_sums_check - 1) < 1e-8 | row_sums_check == 0)) {
+    warning("Some rows do not sum to 1. Check your input matrix.")
+  }
+  
+  return(prob_matrix)
+}
+
+tp_EH250416_SocIso_1_Scoring_CH1_DL <- calculate_transition_probabilities(EH250416_SocIso_1_Scoring_CH1_DL)
+tp_EH250416_SocIso_1_Ch2_MRC <- calculate_transition_probabilities(EH250416_SocIso_1_Ch2_MRC)
+tp_EH250416_SocIso_1_Scoring_CH3_DL <- calculate_transition_probabilities(EH250416_SocIso_1_Scoring_CH3_DL)
+tp_EH250416_SocIso_1_Scoring_CH4_DL <- calculate_transition_probabilities(EH250416_SocIso_1_Scoring_CH4_DL)
+```
+
+function for averaging the probabilities 
+```{r}
+average_probabilities <- function(matrices_list) {
+  # Check that all are matrices
+  if (!all(sapply(matrices_list, is.matrix))) {
+    stop("All elements in the list must be matrices")
+  }
+  
+  # Sum them element-wise (by individual cells)
+  summed <- Reduce("+", matrices_list)
+  
+  # Divide by the number of matrices to get the mean
+  averaged <- summed / length(matrices_list)
+  
+  return(averaged)
+}
+
+matrices_list <- list(tp_EH250416_SocIso_1_Scoring_CH1_DL, 
+                      tp_EH250416_SocIso_1_Ch2_MRC, 
+                      tp_EH250416_SocIso_1_Scoring_CH3_DL,
+                      tp_EH250416_SocIso_1_Scoring_CH4_DL)
+test <- average_probabilities(matrices_list)
+test
+```
+
+testing function to create heatmap
+```{r}
+# Create the heatmap (keeping original order)
+pheatmap(
+  test,
+  color = colorRampPalette(c("blue", "white", "red"))(100),  # blue to red gradient
+  cluster_rows = FALSE,  # keep original order of the data
+  cluster_cols = FALSE,
+  display_numbers = TRUE,  # show probabilities inside cells
+  number_format = "%.2f",  # format values
+  number_color = "white",
+  main = "Transition Probability Heatmap",
+  legend = TRUE
+)
+```
+
+testing function to make violin plots
+```{r}
+#extract the probabilities from list of matrices
+rubbing2rubbing <- sapply(matrices_list, function(x) x[1, 1])
+rubbing2head <- sapply(matrices_list, function(x) x[1, 2])
+rubbing2abdomen <- sapply(matrices_list, function(x) x[1, 3])
+rubbing2wing <- sapply(matrices_list, function(x) x[1, 4])
+rubbing2thorax <- sapply(matrices_list, function(x) x[1, 5])
+
+#create data frame for plots
+df_for_violin <- data.frame(rubbing2rubbing, rubbing2head, rubbing2abdomen, rubbing2wing, rubbing2thorax, condition = c(1:2)) 
+df_for_violin <- df_for_violin %>%
+  pivot_longer(
+    cols = starts_with("rubbing"),  # which columns to pivot
+    names_to = "Behavior Pair",       # new name for column with old column names
+    values_to = "Probability"        # new name for values
+  )
+
+df_for_violin$condition <- as.factor(df_for_violin$condition)
+
+#graphing violin plot 
+test_plot <- ggplot(df_for_violin, aes(x = `Behavior Pair`, y = Probability, fill = condition)) +
+  geom_violin(position = position_dodge(0.8)) +
+  stat_summary(fun = mean, geom = "point", size = 2, color = "black",
+               position = position_dodge(0.8), show.legend = FALSE) +
+  theme_bw() +
+  theme(axis.text = element_text(color = "black")) +
+  labs(
+    x = "Behavior Pair",
+    y = "Probability"
+  )
+test_plot
+```
+

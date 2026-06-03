@@ -1,0 +1,118 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nty/global//global/global/global}
+    \entry{chicco_simple_2025}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=f3d4d09e12e591928a3b270c54528087}{%
+           family={Chicco},
+           familyi={C\bibinitperiod},
+           given={Davide},
+           giveni={D\bibinitperiod}}}%
+        {{hash=58d3faae41d5d262486288230b39c63b}{%
+           family={Sichenze},
+           familyi={S\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod}}}%
+        {{hash=e758b61322d8aaddcad00acf28472ea6}{%
+           family={Jurman},
+           familyi={J\bibinitperiod},
+           given={Giuseppe},
+           giveni={G\bibinitperiod}}}%
+      }
+      \list{language}{1}{%
+        {en}%
+      }
+      \strng{namehash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{fullhash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{fullhashraw}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{bibnamehash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{authorbibnamehash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{authornamehash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{authorfullhash}{6d9afe6f6ba881d5e19866a2baac890a}
+      \strng{authorfullhashraw}{6d9afe6f6ba881d5e19866a2baac890a}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{abstract}{In an age when machine learning and artificial intelligence are broadly employed, traditional statistics can still provide insightful information and results quickly and at a low computational cost. Statistics, in fact, offers many useful tools to researchers, including a series of univariate statistical tests that can identify relationships between pairs of numeric samples: Student’s t-test, Mann-Whitney U test, Chi-squared test, and Kruskal-Wallis test. These tests generate several outcomes, including probability values (p-values) that can express a numerical quantity which accepts or rejects the null hypothesis, based on a certain threshold used. Although effective, these tests are often misused or employed in the wrong contexts, especially among biostatistics studies. Many scientific researchers do not seem to know how to choose one test over the others, and this misuse can lead to incorrect results and wrong conclusions. Here we present a simple theoretical and practical guide to the use of these four tests, first describing their theoretical properties and then displaying the results obtained by applying these tests to real-world medical datasets. Eventually, we explain when and how to use each test based on the data types of the samples considered. Our study can have a strong impact on scientific research by potentially influencing future studies involving these tests. Our recommendations, in turn, can help researchers produce more reliable and sound scientific results, thus increasing the quality of multiple scientific studies across various fields.}
+      \field{issn}{1756-0381}
+      \field{journaltitle}{BioData Mining}
+      \field{month}{8}
+      \field{number}{1}
+      \field{title}{A simple guide to the use of {Student}’s t-test, {Mann}-{Whitney} {U} test, {Chi}-squared test, and {Kruskal}-{Wallis} test in biostatistics}
+      \field{urlday}{13}
+      \field{urlmonth}{4}
+      \field{urlyear}{2026}
+      \field{volume}{18}
+      \field{year}{2025}
+      \field{urldateera}{ce}
+      \true{nocite}
+      \field{pages}{56}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1186/s13040-025-00465-6
+      \endverb
+      \verb{file}
+      \verb Full Text PDF:/Users/anu/Zotero/storage/3A5EUJ9I/Chicco et al. - 2025 - A simple guide to the use of Student’s t-test, Mann-Whitney U test, Chi-squared test, and Kruskal-Wa.pdf:application/pdf
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1186/s13040-025-00465-6
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1186/s13040-025-00465-6
+      \endverb
+      \keyw{Biostatistics,Chi-squared test,Kruskal-Wallis test,Mann-Whitney U test,Statistical significance,Student’s t-test,Univariate statistical tests}
+    \endentry
+    \entry{siegel1957nonparametric}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=358ab951a63f400efc186b877bc7a76f}{%
+           family={Siegel},
+           familyi={S\bibinitperiod},
+           given={Sidney},
+           giveni={S\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Taylor \& Francis}%
+      }
+      \strng{namehash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{fullhash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{fullhashraw}{358ab951a63f400efc186b877bc7a76f}
+      \strng{bibnamehash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{authorbibnamehash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{authornamehash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{authorfullhash}{358ab951a63f400efc186b877bc7a76f}
+      \strng{authorfullhashraw}{358ab951a63f400efc186b877bc7a76f}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{The American Statistician}
+      \field{number}{3}
+      \field{title}{Nonparametric statistics}
+      \field{volume}{11}
+      \field{year}{1957}
+      \field{pages}{13\bibrangedash 19}
+      \range{pages}{7}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

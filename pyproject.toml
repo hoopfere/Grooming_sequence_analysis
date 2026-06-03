@@ -1,0 +1,22 @@
+[project]
+name = "fly-syntax-nlp"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "h5py>=3.15.1",
+    "marimo>=0.23.4",
+    "mat73>=0.65",
+    "matplotlib>=3.10.7",
+    "nbformat>=5.10.4",
+    "netgraph>=4.13.2",
+    "networkx>=3.6.1",
+    "pandas>=2.3.3",
+    "plotly>=6.5.1",
+    "pycocotools>=2.0.11",
+    "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
+    "statsmodels>=0.14.6",
+    "wigglystuff>=0.4.0",
+]

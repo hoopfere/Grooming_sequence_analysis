@@ -1,0 +1,22 @@
+---
+title: "fly_regression"
+output: html_document
+---
+
+ˆ
+```{r}
+library(tidyverse)
+
+data <- read_csv("data/regression_data_heatstress.csv") %>%
+  mutate(treatment = as.numeric(treatment == "chain1")) %>%
+  select(-`...1`)
+```
+
+
+```{r}
+data
+model <- glm(treatment ~ ., data = data, family = "binomial")
+
+summary(model)
+```
+
