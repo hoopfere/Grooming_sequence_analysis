@@ -1,38 +1,45 @@
+"""
+Markov chain utilities for analyzing fly behavior sequences.
+
+Provides MarkovChain class to create transition matrices, compute entropy,
+visualize heatmaps and graphs, and export summaries from CSV exports.
+"""
+
 import itertools
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
-from matplotlib.axes import Axes
 import networkx as nx
 import numpy as np
-from numpy.__config__ import show
 import pandas as pd
 import seaborn as sns
+from matplotlib.axes import Axes
 
 
 class MarkovChain:
     """
     Process and analyze Markov chain data from fly studies
-    
+
     Attributes:
-        dfs (list[pd.DataFrame]): Behavioral data from each video. 
+        dfs (list[pd.DataFrame]): Behavioral data from each video.
         behavior_vals (list[str]): A list of the behaviors in the chain.
         probability_list (list[pd.DataFrame]): Markov probabilities estimated for each chain.
         frequency_list (list[pd.DataFrame]): Frequencies of each transition.
-        sequence_list (list[pd.DataFrame]): Sequences of states with current and next state. 
-        
-        
+        sequence_list (list[pd.DataFrame]): Sequences of states with current and next state.
+
+
     """
 
     def __init__(self, filepath, name=None):
         """
-        Initiates a Markov chain, requiring the path of a source .csv and 
+        Initiates a Markov chain, requiring the path of a source .csv and
         optionally a name for the chain for use in plotting and UI elements
 
         Arguments:
             filepath (str): the filepath of the .csv containing behavioral data.
             name (str): the name of the treatment group for the .csv.
         """
-        
+
         self.dfs, self.filenames = self._csv_to_dfs(filepath)
         self.behavior_vals: list[str] = sorted(
             list(pd.unique(pd.read_csv(filepath)["behavior"].dropna())) + ["stand"]
@@ -51,11 +58,15 @@ class MarkovChain:
         self._update_chain()
         self._update_entropy()
 
+    def __repr__(self) -> str:
+        """Short representation of the MarkovChain instance."""
+        return f"MarkovChain(name={self.name!r}, files={len(self.dfs)})"
+
     def _reorder_behavior_vals(self, new_order: list[str]):
         """
         Changes the order of behavioral states for the chain in place.
         """
-        
+
         self.behavior_vals = new_order
         self._update_chain()
 
@@ -63,7 +74,7 @@ class MarkovChain:
         """
         Update values for each of the data lists. Used for UI mostly.
         """
-        
+
         self.markov_shape = (len(self.behavior_vals), len(self.behavior_vals))
         self.probability_list = [self._df_to_markov(df) for df in self.dfs]
         self.frequency_list = [self._df_to_markov(df, counts=True) for df in self.dfs]
@@ -73,17 +84,28 @@ class MarkovChain:
         """
         Converts an original .csv (from Matlab) into a list of DataFrames for each video in that .csv
         """
-        
+
         data = pd.read_csv(filepath)
         data = data.query("behavior != 'class_all_grooming'")
 
-        dfs = [
-            data.query(f"file == '{f}'").sort_values(by="start_time")
-            if len(data.query(f"file == '{f}'").sort_values(by="start_time")) > 0 else pd.DataFrame({"file": [f], "behavior": ["stand"], "start_time": [0], "duration": [0]})
-            for f in pd.unique(data["file"])]
-
-
-        filenames = [str(f) for f in pd.unique(data["file"])]
+        dfs = []
+        filenames = []
+        for f in pd.unique(data["file"]):
+            subset = data[data["file"] == f].sort_values(by="start_time")
+            if len(subset) > 0:
+                dfs.append(subset)
+            else:
+                dfs.append(
+                    pd.DataFrame(
+                        {
+                            "file": [f],
+                            "behavior": ["stand"],
+                            "start_time": [0],
+                            "duration": [0],
+                        }
+                    )
+                )
+            filenames.append(str(f))
 
         return dfs, filenames
 
@@ -121,8 +143,8 @@ class MarkovChain:
             return frequencies
 
         normalizing = np.sum(frequencies.values, axis=-1).reshape(-1, 1)
-
-        probabilities = (frequencies.values) / normalizing
+        with np.errstate(divide="ignore", invalid="ignore"):
+            probabilities = (frequencies.values) / normalizing
         probabilities = np.nan_to_num(probabilities)
 
         markov = pd.DataFrame(
@@ -130,20 +152,20 @@ class MarkovChain:
             index=pd.Index(self.behavior_vals),
             columns=pd.Index(self.behavior_vals),
         )
-
-        return markov
+        with np.errstate(divide="ignore", invalid="ignore"):
+            return markov
 
     def _df_to_sequence(self, data, delta=1) -> pd.DataFrame:
         """
         Returns a sequence dataframe with the following features:
-            
+
         Features:
             treatment (str): The treatment
             curr_behavior (str): The current behavior
             next_behavior (str): The next behavior ("last" if last)
             duration (int): The duration of the current behavior
         """
-        
+
         behaviors = data["behavior"].tolist()
         start_times = data["start_time"].tolist()
         durations = data["duration"].tolist()
@@ -151,27 +173,28 @@ class MarkovChain:
         sequence = []
         new_durations = []
 
-
         for i in range(len(behaviors) - 1):
             curr = behaviors[i]
+            next_beh = behaviors[i + 1]
             sequence.append(curr)
             new_durations.append(durations[i])
 
-            if (
-                start_times[i + 1] - start_times[i] - durations[i] > delta
-                or curr == next
-            ):
+            gap = start_times[i + 1] - start_times[i] - durations[i]
+            if gap > delta or curr == next_beh:
                 sequence.append("stand")
-                new_durations.append(start_times[i + 1] - start_times[i] - durations[i])
+                # ensure non-negative duration
+                new_durations.append(gap if gap > 0 else 0)
 
         if sequence == []:
-            return pd.DataFrame({
-                "treatment": [self.name],
-                "curr_behavior": ["stand"],
-                "next_behavior": ["stand"],
-                "duration": [0],
-            })
-        
+            return pd.DataFrame(
+                {
+                    "treatment": [self.name],
+                    "curr_behavior": ["stand"],
+                    "next_behavior": ["stand"],
+                    "duration": [0],
+                }
+            )
+
         return pd.DataFrame(
             {
                 "treatment": [self.name for _ in range(len(sequence))],
@@ -185,7 +208,7 @@ class MarkovChain:
         """
         Flattens a Markov matrix dataframe into a single row with columns {source}_{target} for each combination of source and target behavior
         """
-        
+
         wide = (
             df.stack()  # Melt to (row_node, col_node) → value
             .rename_axis(["source", "target"])  # Name the index levels
@@ -205,7 +228,7 @@ class MarkovChain:
         """
         Flattens multiple dataframes in a list using a helper function
         """
-        
+
         dfs = [self._flatten_df_helper(df) for df in self.probability_list]
         return pd.concat(dfs)
 
@@ -213,7 +236,7 @@ class MarkovChain:
         """
         Sums the Markov chain frequencies over all individuals in the population.
         """
-        
+
         sum_prob = np.zeros(self.markov_shape, dtype="float64")
         markovs = self.frequency_list
         for df in markovs:
@@ -225,13 +248,13 @@ class MarkovChain:
         )
         return out_df
 
-    def mean_markovs(self, freq=False):
+    def mean_markovs(self, freq: bool = False) -> pd.DataFrame:
         """
         Takes the mean over all transition matrices in the population.
 
         Optionally returns frequencies, rather than probabilities
         """
-        
+
         frequencies = self.sum_markovs().values
 
         if freq:
@@ -241,8 +264,8 @@ class MarkovChain:
                 columns=pd.Index(self.behavior_vals),
             )
         normalizing = np.sum(frequencies, axis=-1).reshape(-1, 1)
-
-        probabilities = (frequencies) / normalizing
+        with np.errstate(divide="ignore"):
+            probabilities = (frequencies) / normalizing
         probabilities = np.nan_to_num(probabilities)
 
         return pd.DataFrame(
@@ -255,7 +278,7 @@ class MarkovChain:
         """
         Gets the interbout durations over the entire population. Useful for determining a non-grooming delta for analysis.
         """
-        
+
         breaks = []
 
         for data in self.dfs:
@@ -271,7 +294,7 @@ class MarkovChain:
         """
         Returns a Matplotlib Axes object that is a heatmap of the transition probabilities for the population.
         """
-        
+
         plt.close()
         if show_stand:
             p = sns.heatmap(self.mean_markovs())
@@ -281,11 +304,13 @@ class MarkovChain:
             )
         return p
 
-    def show_markov_graph(self, hide_stand=False, title="Markov Chain Graph"):
+    def show_markov_graph(
+        self, hide_stand: bool = False, title: str = "Markov Chain Graph"
+    ) -> None:
         """
         Displays a NetworkX graph of the transition matrices over the population
         """
-        
+
         data = self.mean_markovs()
         if hide_stand:
             data = data.drop("stand", axis=1).drop("stand", axis=0)
@@ -347,7 +372,7 @@ class MarkovChain:
         """
         Markov chain entropy calculation from "Estimating the Entropy Rate of Finite Markov Chains With Application to Behavior Studies" (2019)
         """
-        
+
         entropy_vals = []
 
         for i in range(len(self.probability_list)):
@@ -382,7 +407,7 @@ class MarkovChain:
                 skip_sum += self.get_num_skips(sequence, ordering)
 
             print(ordering, skip_sum)
-            
+
         pass
 
     def get_num_skips(self, sequence, ordering) -> int:
@@ -405,7 +430,7 @@ class MarkovChain:
         Returns a summary DataFrame containing treatment, filename, and entropy for each individual in the population.
         """
         # TODO: add flattened representation of Markov chain
-        
+
         data = {
             "treatment": [self.name for _ in range(len(self.filenames))],
             "filenames": self.filenames,
@@ -415,5 +440,8 @@ class MarkovChain:
         return pd.DataFrame.from_dict(data)
 
 
-    
-        
+def time_segment(segments):
+    """
+    Input a list of tuples to compare, output multiple chains to analyze
+    """
+    # TODO: use Marimo code from the opto experiment to make a chunking workflow object

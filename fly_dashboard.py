@@ -5,123 +5,81 @@ app = marimo.App(width="full", app_title="Fly Dashboard")
 
 
 @app.cell(hide_code=True)
-def _(embedding_radio, mo, plot_embeddings, plot_entropy, plot_markovs):
+def _(
+    chain1,
+    chain2,
+    embedding_radio,
+    entropy_test,
+    mo,
+    plot_embeddings,
+    plot_entropy,
+    plot_markovs,
+    test_radio,
+):
     chart = plot_embeddings(method=embedding_radio.value)
+    entropy_test_result = entropy_test(chain1.entropy_vals, chain2.entropy_vals, test_type=test_radio.value)
 
     mo.vstack([plot_markovs(), mo.hstack([plot_entropy(), chart], widths="equal")])
-    return (chart,)
+
+    return chart, entropy_test_result
 
 
 @app.cell(hide_code=True)
 def _(
     chain1,
     chain2,
-    chart,
     choose_behavior,
     ds_dd1,
     ds_dd2,
     ds_label1,
     ds_label2,
     embedding_radio,
+    entropy_test_result,
     mo,
     pd,
-    selected_markov,
-    selected_markov_plot,
+    test_radio,
 ):
-    if len(chart.value) == 0:
-        markov_fig = "Markov chain not selected"
-
-    else:
-        markov_fig = mo.hstack([mo.ui.matplotlib(selected_markov_plot), mo.ui.dataframe(selected_markov, format_mapping={
-            i: "{:.2f}".format for i in chain1.behavior_vals  # Formats to 2 decimal places
-        }
-    )])
-
     mo.vstack(
         [
             mo.hstack([
-                mo.vstack([ds_dd1, ds_dd2, embedding_radio, 
+                mo.vstack([ds_dd1, ds_dd2,
                 pd.concat([chain1.export_summary(), chain2.export_summary()])
             ]),
-            mo.vstack([ds_label1, ds_label2]), choose_behavior]),
-            markov_fig
+            mo.vstack([ds_label1, ds_label2]), embedding_radio, choose_behavior])
         ]
     )
-    return
 
-
-@app.cell(hide_code=True)
-def _(mo):
-    mo.md(r"""
-    # Regression
-    ## $\text{next\_state} = \text{current\_state} \times \text{treatment}$
-
-    We would expect to end up with a parameter for each of the possible transitions. Our goal is to see whether or not the treatment interaction changes the result of the regression.
-    """)
+    mo.vstack([
+        mo.hstack([mo.vstack([mo.hstack([mo.vstack([mo.hstack([ds_dd1, ds_dd2, embedding_radio]), mo.hstack([ds_label1, ds_label2, test_radio, mo.md(f'''P-value:
+        {entropy_test_result[1]}''')]), choose_behavior])])]), pd.concat([chain1.export_summary(), chain2.export_summary()])])
+    ])
     return
 
 
 @app.cell
-def _(regression_data):
-    regression_data
+def _(markov_fig):
+    markov_fig
     return
 
 
-@app.cell
-def _(chain1, chain2, pd):
-    import statsmodels.formula.api as smf
-
-    regression_data = pd.concat([chain1._flattened_df(), chain2._flattened_df()])
-
-    regression_data.to_csv("data/regression_data_heatstress.csv")
-    return (regression_data,)
-
-
 @app.cell(hide_code=True)
-def _(chain1, chain2, chart, mo, plt, sns):
-    mo.stop(len(chart.value) == 0)
+def _(
+    PCA,
+    TSNE,
+    alt,
+    chain1,
+    chain2,
+    choose_behavior,
+    kruskal,
+    mo,
+    np,
+    pd,
+    plt,
+    sns,
+    ttest_ind,
+):
+    mo.stop(chain1.behavior_vals != chain2.behavior_vals, output="The selected chains do not have the same behaviors")
 
-    plt.figure(figsize=(3, 3))
-
-    selected_markov = (chain1.probability_list + chain2.probability_list)[chart.value.index[0]]
-
-    selected_markov_plot = sns.heatmap(
-        selected_markov,
-        vmin=0,
-        vmax=1,
-        cmap="coolwarm",
-        square=True,
-    )
-    return selected_markov, selected_markov_plot
-
-
-@app.cell(hide_code=True)
-def _(mo, os):
-    options = sorted(os.listdir("data/"))
-
-    ds_dd1 = mo.ui.dropdown(options=options, label="choose dataset 1", value=options[4])
-    ds_label1 = mo.ui.text(label="dataset 1 name:", value="chain1")
-    ds_dd2 = mo.ui.dropdown(options=options, label="choose dataset 2", value=options[7])
-    ds_label2 = mo.ui.text(label="dataset 2 name:", value="chain2")
-    embedding_radio = mo.ui.radio(options=["PCA", "t-SNE"], value="PCA")
-    return ds_dd1, ds_dd2, ds_label1, ds_label2, embedding_radio
-
-
-@app.cell(hide_code=True)
-def _(MarkovChain, SortableList, ds_dd1, ds_dd2, ds_label1, ds_label2, mo):
-    chain1 = MarkovChain(filepath="data/" + ds_dd1.value, name=ds_label1.value)
-    chain2 = MarkovChain(filepath="data/" + ds_dd2.value, name=ds_label2.value)
-
-    choose_behavior = mo.ui.anywidget(
-        SortableList(
-            value=chain1.behavior_vals, editable=True, label="Behavioral Order"
-        )
-    )
-    return chain1, chain2, choose_behavior
-
-
-@app.cell(hide_code=True)
-def _(PCA, TSNE, alt, chain1, chain2, choose_behavior, mo, np, pd, plt, sns):
     chain1._reorder_behavior_vals(new_order=choose_behavior.value["value"])
     chain2._reorder_behavior_vals(new_order=choose_behavior.value["value"])
 
@@ -130,17 +88,17 @@ def _(PCA, TSNE, alt, chain1, chain2, choose_behavior, mo, np, pd, plt, sns):
         fig, axes = plt.subplots(1, 3, figsize=(30, 7), sharex=True)
 
         sns.heatmap(
-            chain1.mean_markovs_new(), ax=axes[0], vmin=0, vmax=1, cmap="coolwarm"
+            chain1.mean_markovs(), ax=axes[0], vmin=0, vmax=1, cmap="coolwarm"
         )
         axes[0].set_title(chain1.name)
 
         sns.heatmap(
-            chain2.mean_markovs_new(), ax=axes[1], vmin=0, vmax=1, cmap="coolwarm"
+            chain2.mean_markovs(), ax=axes[1], vmin=0, vmax=1, cmap="coolwarm"
         )
         axes[1].set_title(chain2.name)
 
         sns.heatmap(
-            chain1.mean_markovs_new() - chain2.mean_markovs_new(),
+            chain1.mean_markovs() - chain2.mean_markovs(),
             ax=axes[2],
             cmap="coolwarm",
         )
@@ -211,7 +169,78 @@ def _(PCA, TSNE, alt, chain1, chain2, choose_behavior, mo, np, pd, plt, sns):
 
         return chart
 
-    return plot_embeddings, plot_entropy, plot_markovs
+    def entropy_test(chain1, chain2, test_type = "KW Test"):
+        if test_type == "KW Test":
+            stat, p_value = kruskal(chain1, chain2)
+        else:
+            stat, p_value = ttest_ind(chain1, chain2)
+
+        return stat, p_value
+
+
+
+    return entropy_test, plot_embeddings, plot_entropy, plot_markovs
+
+
+@app.cell(hide_code=True)
+def _(chain1, chart, mo, selected_markov, selected_markov_plot):
+    if len(chart.value) == 0:
+        markov_fig = "Markov chain not selected"
+
+    else:
+        markov_fig = mo.hstack([mo.ui.matplotlib(selected_markov_plot), mo.ui.table(selected_markov, format_mapping={
+            i: "{:.2f}".format for i in chain1.behavior_vals  # Formats to 2 decimal places
+        }
+    )])
+    return (markov_fig,)
+
+
+@app.cell(hide_code=True)
+def _(chain1, chain2, chart, plt, sns):
+    # mo.stop(len(chart.value) == 0)
+
+    plt.figure(figsize=(3, 3))
+
+    if len(chart.value != 0):
+        selected_markov = (chain1.probability_list + chain2.probability_list)[chart.value.index[0]]
+    else:
+        selected_markov = (chain1.probability_list + chain2.probability_list)[0]
+
+    selected_markov_plot = sns.heatmap(
+        selected_markov,
+        vmin=0,
+        vmax=1,
+        cmap="coolwarm",
+        square=True,
+    )
+    return selected_markov, selected_markov_plot
+
+
+@app.cell(hide_code=True)
+def _(mo, os):
+    options = sorted(os.listdir("data/"))
+
+    ds_dd1 = mo.ui.dropdown(options=options, label="choose dataset 1", value=options[4])
+    ds_label1 = mo.ui.text(label="dataset 1 name:", value="chain1")
+    ds_dd2 = mo.ui.dropdown(options=options, label="choose dataset 2", value=options[7])
+    ds_label2 = mo.ui.text(label="dataset 2 name:", value="chain2")
+    embedding_radio = mo.ui.radio(options=["PCA", "t-SNE"], value="PCA")
+    test_radio = mo.ui.radio(options=["T-Test", "KW Test"], value="T-Test")
+    return ds_dd1, ds_dd2, ds_label1, ds_label2, embedding_radio, test_radio
+
+
+@app.cell(hide_code=True)
+def _(MarkovChain, SortableList, ds_dd1, ds_dd2, ds_label1, ds_label2, mo):
+    chain1 = MarkovChain(filepath="data/" + ds_dd1.value, name=ds_label1.value)
+    chain2 = MarkovChain(filepath="data/" + ds_dd2.value, name=ds_label2.value)
+
+
+    choose_behavior = mo.ui.anywidget(
+        SortableList(
+            value=chain1.behavior_vals, editable=True, label="Behavioral Order"
+        )
+    )
+    return chain1, chain2, choose_behavior
 
 
 @app.cell(hide_code=True)
@@ -224,13 +253,31 @@ def _():
     import numpy as np
     import pandas as pd
     import seaborn as sns
+
     from sklearn.decomposition import PCA
     from sklearn.manifold import TSNE
+    from scipy.stats import kruskal
+    from scipy.stats import ttest_ind
+
     from wigglystuff import SortableList
 
     from MarkovChain import MarkovChain
 
-    return MarkovChain, PCA, SortableList, TSNE, alt, mo, np, os, pd, plt, sns
+    return (
+        MarkovChain,
+        PCA,
+        SortableList,
+        TSNE,
+        alt,
+        kruskal,
+        mo,
+        np,
+        os,
+        pd,
+        plt,
+        sns,
+        ttest_ind,
+    )
 
 
 if __name__ == "__main__":
