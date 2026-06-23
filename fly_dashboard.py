@@ -16,12 +16,23 @@ def _(
     plot_markovs,
     test_radio,
 ):
-    chart = plot_embeddings(method=embedding_radio.value)
-    entropy_test_result = entropy_test(chain1.entropy_vals, chain2.entropy_vals, test_type=test_radio.value)
+    try:
+        chart = plot_embeddings(method=embedding_radio.value)
+        entropy_test_result = entropy_test(chain1.entropy_vals, chain2.entropy_vals, test_type=test_radio.value)
 
-    mo.vstack([plot_markovs(), mo.hstack([plot_entropy(), chart], widths="equal")])
+        plots = mo.vstack([plot_markovs(), mo.hstack([plot_entropy(), chart], widths="equal"), mo.md(f'''P-value:
+        {entropy_test_result[1]}''')])
 
-    return chart, entropy_test_result
+    except ValueError as e:
+        print(e)
+        print("double check that the behaviors match!")
+
+        mo.stop(e != None)
+
+    plots
+
+
+    return (chart,)
 
 
 @app.cell(hide_code=True)
@@ -34,55 +45,32 @@ def _(
     ds_label1,
     ds_label2,
     embedding_radio,
-    entropy_test_result,
     mo,
     pd,
     test_radio,
 ):
-    mo.vstack(
-        [
-            mo.hstack([
-                mo.vstack([ds_dd1, ds_dd2,
-                pd.concat([chain1.export_summary(), chain2.export_summary()])
-            ]),
-            mo.vstack([ds_label1, ds_label2]), embedding_radio, choose_behavior])
-        ]
-    )
+    mo.hstack([mo.vstack([mo.hstack([mo.vstack([mo.hstack([ds_dd1, ds_dd2, embedding_radio]), mo.hstack([ds_label1, ds_label2, test_radio]), choose_behavior])])]), pd.concat([chain1.export_summary(), chain2.export_summary()])])
 
-    mo.vstack([
-        mo.hstack([mo.vstack([mo.hstack([mo.vstack([mo.hstack([ds_dd1, ds_dd2, embedding_radio]), mo.hstack([ds_label1, ds_label2, test_radio, mo.md(f'''P-value:
-        {entropy_test_result[1]}''')]), choose_behavior])])]), pd.concat([chain1.export_summary(), chain2.export_summary()])])
-    ])
     return
 
 
-@app.cell
+@app.cell(hide_code=True)
 def _(markov_fig):
     markov_fig
     return
 
 
 @app.cell(hide_code=True)
-def _(
-    PCA,
-    TSNE,
-    alt,
-    chain1,
-    chain2,
-    choose_behavior,
-    kruskal,
-    mo,
-    np,
-    pd,
-    plt,
-    sns,
-    ttest_ind,
-):
+def _(chain1, chain2, choose_behavior, mo):
     mo.stop(chain1.behavior_vals != chain2.behavior_vals, output="The selected chains do not have the same behaviors")
 
     chain1._reorder_behavior_vals(new_order=choose_behavior.value["value"])
     chain2._reorder_behavior_vals(new_order=choose_behavior.value["value"])
+    return
 
+
+@app.cell(hide_code=True)
+def _(PCA, TSNE, alt, chain1, chain2, mo, np, pd, plt, sns):
     def plot_markovs():
 
         fig, axes = plt.subplots(1, 3, figsize=(30, 7), sharex=True)
@@ -169,17 +157,11 @@ def _(
 
         return chart
 
-    def entropy_test(chain1, chain2, test_type = "KW Test"):
-        if test_type == "KW Test":
-            stat, p_value = kruskal(chain1, chain2)
-        else:
-            stat, p_value = ttest_ind(chain1, chain2)
-
-        return stat, p_value
 
 
 
-    return entropy_test, plot_embeddings, plot_entropy, plot_markovs
+
+    return plot_embeddings, plot_entropy, plot_markovs
 
 
 @app.cell(hide_code=True)
@@ -217,20 +199,30 @@ def _(chain1, chain2, chart, plt, sns):
 
 
 @app.cell(hide_code=True)
-def _(mo, os):
+def _(Path, mo, os):
     options = sorted(os.listdir("data/"))
 
-    ds_dd1 = mo.ui.dropdown(options=options, label="choose dataset 1", value=options[4])
-    ds_label1 = mo.ui.text(label="dataset 1 name:", value="chain1")
-    ds_dd2 = mo.ui.dropdown(options=options, label="choose dataset 2", value=options[7])
-    ds_label2 = mo.ui.text(label="dataset 2 name:", value="chain2")
+    ds_dd1 = mo.ui.dropdown(options=options, label="choose dataset 1", value=options[0])
+    ds_label1 = mo.ui.text(label="dataset 1 name:", value=Path(options[0]).stem)
+    ds_dd2 = mo.ui.dropdown(options=options, label="choose dataset 2", value=options[0])
+    ds_label2 = mo.ui.text(label="dataset 2 name:", value=Path(options[0]).stem)
     embedding_radio = mo.ui.radio(options=["PCA", "t-SNE"], value="PCA")
     test_radio = mo.ui.radio(options=["T-Test", "KW Test"], value="T-Test")
     return ds_dd1, ds_dd2, ds_label1, ds_label2, embedding_radio, test_radio
 
 
 @app.cell(hide_code=True)
-def _(MarkovChain, SortableList, ds_dd1, ds_dd2, ds_label1, ds_label2, mo):
+def _(
+    MarkovChain,
+    SortableList,
+    ds_dd1,
+    ds_dd2,
+    ds_label1,
+    ds_label2,
+    kruskal,
+    mo,
+    ttest_ind,
+):
     chain1 = MarkovChain(filepath="data/" + ds_dd1.value, name=ds_label1.value)
     chain2 = MarkovChain(filepath="data/" + ds_dd2.value, name=ds_label2.value)
 
@@ -240,12 +232,23 @@ def _(MarkovChain, SortableList, ds_dd1, ds_dd2, ds_label1, ds_label2, mo):
             value=chain1.behavior_vals, editable=True, label="Behavioral Order"
         )
     )
-    return chain1, chain2, choose_behavior
+
+    def entropy_test(chain1, chain2, test_type = "KW Test"):
+        if test_type == "KW Test":
+            stat, p_value = kruskal(chain1, chain2)
+        else:
+            stat, p_value = ttest_ind(chain1, chain2)
+
+        return stat, p_value
+
+    return chain1, chain2, choose_behavior, entropy_test
 
 
 @app.cell(hide_code=True)
 def _():
     import os
+    import regex as re
+    from pathlib import Path
 
     import altair as alt
     import marimo as mo
@@ -266,6 +269,7 @@ def _():
     return (
         MarkovChain,
         PCA,
+        Path,
         SortableList,
         TSNE,
         alt,
